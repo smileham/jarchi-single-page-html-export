@@ -99,7 +99,9 @@ if(! folders.size()) {
   reportName = model.name;
 }
 else {
-  reportName = model.name+' - '+folders.first().name;
+  var firstFolder = folders.first().name;
+  console.log("First folder selected is: "+firstFolder);
+  reportName = model.name+' - '+firstFolder;
 }
 
 var filePath = window.promptSaveFile({ title: "Save as HTML file", filterExtensions : [ "*.html" , "*.*"], fileName : reportName + ".html" });
