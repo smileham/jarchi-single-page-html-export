@@ -33,6 +33,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
+// Updated to respect _hide_from_export_ and Folder names
+
 load(__DIR__ + 'libs/nashorn-polyfills.js');
 load(__DIR__ + 'libs/underscore-min.js');
 load(__DIR__ + 'libs/marked.min.js');
@@ -76,6 +78,7 @@ var treeFolder = '';
 var treeContent = '';
 var viewTitles =  '';
 var viewDiagrams = '';
+var reportName = '';
 var viewDocumentations = '';
 var viewsIdsByConceptId = {};
 var elements = '';
@@ -93,9 +96,13 @@ var folders = selection.filter("folder").not(nonViewFolders);
 if(! folders.size()) {
   folders = viewsFolder;
   console.log("All views have been selected.");
+  reportName = model.name;
+}
+else {
+  reportName = model.name+' - '+folders.name;
 }
 
-var filePath = window.promptSaveFile({ title: "Save as HTML file", filterExtensions : [ "*.html" , "*.*"], fileName : model.name + ".html" });
+var filePath = window.promptSaveFile({ title: "Save as HTML file", filterExtensions : [ "*.html" , "*.*"], fileName : reportName + ".html" });
 
 if(!filePath) {
   console.log('User cancelled.');
@@ -107,46 +114,50 @@ _.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
 });
 
 function exportViews(folder) {
-  console.log('Exporting "', folder.name, '"...');
-  var previousContent = treeContent;
-  treeContent = '';
-  _.chain($(folder).children('folder')).sortBy(function(f) { return f.name; }).each(function(f) {
-    exportViews(f)
-  });
-  _.chain($(folder).children('view')).sortBy(function(v) { return v.name; }).each(function(v) {
-    // Generate report's fragments
-    treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
-    visibilityRulesBold += tplVisibilityRuleBold({viewId: 'id-'+v.id});
-    visibilityRulesReveal += tplVisibilityRuleReveal({viewId: 'id-'+v.id});
-    inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
-    viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
-    viewDiagrams += tplViewDiagram({viewId: 'id-'+v.id, viewImage: $.model.renderViewAsBase64(v, "PNG")});
-    viewDocumentations += tplDocumentation({
-      viewId: 'id-'+v.id,
-      documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
-      documentationMarkdown: marked(_.escape(v.documentation), mdOptions)
+  if (!$(folder).prop("_hide_from_export_")) {
+    console.log('Exporting "', folder.name, '"...');
+    var previousContent = treeContent;
+    treeContent = '';
+    _.chain($(folder).children('folder')).sortBy(function(f) { return f.name; }).each(function(f) {
+      exportViews(f)
     });
-    
-    // Update lists of elements and relationships
-    $(v).find('element').each(function(e) {
-      if(elementsCollection) {
-        if(!elementsCollection.contains(e.concept)) elementsCollection.add($(e.concept));
-      } else {
-        elementsCollection = $(e.concept);
+    _.chain($(folder).children('view')).sortBy(function(v) { return v.name; }).each(function(v) {
+      if (!v.prop("_hide_from_export_")) {
+        // Generate report's fragments
+        treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
+        visibilityRulesBold += tplVisibilityRuleBold({viewId: 'id-'+v.id});
+        visibilityRulesReveal += tplVisibilityRuleReveal({viewId: 'id-'+v.id});
+        inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
+        viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
+        viewDiagrams += tplViewDiagram({viewId: 'id-'+v.id, viewImage: $.model.renderViewAsBase64(v, "PNG")});
+        viewDocumentations += tplDocumentation({
+          viewId: 'id-'+v.id,
+          documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
+          documentationMarkdown: marked(_.escape(v.documentation), mdOptions)
+        });
+        
+        // Update lists of elements and relationships
+        $(v).find('element').each(function(e) {
+          if(elementsCollection) {
+            if(!elementsCollection.contains(e.concept)) elementsCollection.add($(e.concept));
+          } else {
+            elementsCollection = $(e.concept);
+          }
+          viewsIdsByConceptId[e.concept.id] += ' id-'+v.id;
+        });
+        $(v).find('relationship').each(function(r) {
+          if(relationshipsCollection) {
+            if(!relationshipsCollection.contains(r.concept)) relationshipsCollection.add($(r.concept));
+          } else {
+            relationshipsCollection = $(r.concept);
+          }
+          viewsIdsByConceptId[r.concept.id] += ' id-'+v.id;
+        });
       }
-      viewsIdsByConceptId[e.concept.id] += ' id-'+v.id;
     });
-    $(v).find('relationship').each(function(r) {
-      if(relationshipsCollection) {
-        if(!relationshipsCollection.contains(r.concept)) relationshipsCollection.add($(r.concept));
-      } else {
-        relationshipsCollection = $(r.concept);
-      }
-      viewsIdsByConceptId[r.concept.id] += ' id-'+v.id;
-    });
-  });
-  treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
-  treeContent = previousContent + treeContent;
+    treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
+    treeContent = previousContent + treeContent;
+  }
 }
 
 _.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
@@ -175,7 +186,7 @@ var mainReport = tplMainReport({
   roboto: roboto,
   icon: icon,
   picnic: picnic,
-  modelTitle: _.escape(model.name),
+  modelTitle: _.escape(reportName),
   visibilityRulesBold: visibilityRulesBold,
   visibilityRulesReveal: visibilityRulesReveal,
   inputCheckbox: inputCheckbox,
