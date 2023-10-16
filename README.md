@@ -14,6 +14,13 @@ To use it, simply download the archive from the [latest release](https://github.
 
 Mardown rendering of documentations is `on` by default. You can set it `off` in the "Preferences" dialog (cog icon on top right).
 
+---
+# Additional functionality
+
+This fork of the original work from Phil and Jean-Baptiste supports the exsititng '\_hide_from_export_' function, as well as the naming of the report based on the "first" folder which has been selected for export.
+
+---
+
 Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie
 
 >Permission is hereby granted, free of charge, to any person
